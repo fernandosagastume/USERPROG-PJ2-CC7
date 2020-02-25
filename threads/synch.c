@@ -130,6 +130,7 @@ sema_up (struct semaphore *sema)
                                 struct thread, elem));
   }
   sema->value++;
+  //Se agrega preemption para saber si ceder el CPU o no 
   checkMaxCurrentT();
   intr_set_level (old_level);
 }
