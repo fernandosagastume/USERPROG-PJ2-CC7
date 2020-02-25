@@ -42,11 +42,6 @@
    - up or "V": increment the value (and wake up one waiting
      thread, if any). */
 
-//static bool 
-//priorityCompareSemaphore(const struct list_elem *a,const struct list_elem *b,
-  //                    void *aux UNUSED);
-
-
 void
 sema_init (struct semaphore *sema, unsigned value) 
 {
