@@ -43,7 +43,7 @@ void cond_broadcast (struct condition *, struct lock *);
 
 //Mis funciones 
 //------------------------------------------------------------------------------------------------------------------
-//bool priorityCompareSemaphore(const struct list_elem *a, const struct list_elem *b,void *aux UNUSED); /*Función utilizada 
+bool priorityCompareCondvarSemaphore(const struct list_elem *a, const struct list_elem *b,void *aux); /*Función utilizada 
 //para ordenar listas*/
 //------------------------------------------------------------------------------------------------------------------
 
