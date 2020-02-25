@@ -42,9 +42,9 @@
    - up or "V": increment the value (and wake up one waiting
      thread, if any). */
 
-static bool 
-priorityCompareSemaphore(const struct list_elem *a,const struct list_elem *b,
-                      void *aux UNUSED);
+//static bool 
+//priorityCompareSemaphore(const struct list_elem *a,const struct list_elem *b,
+  //                    void *aux UNUSED);
 
 /* One semaphore in a list. */
 struct semaphore_elem 
@@ -62,19 +62,19 @@ sema_init (struct semaphore *sema, unsigned value)
   list_init (&sema->waiters);
 }
 
-static bool 
+/*static bool 
 priorityCompareSemaphore(const struct list_elem *a,const struct list_elem *b,
                       void *aux UNUSED){
   struct semaphore_elem *sema_a = list_entry (a, struct semaphore_elem, elem);
   struct semaphore_elem *sema_b = list_entry (b, struct semaphore_elem, elem);
 
-  if (list_empty(list_front(&sema_a->semaphore.waiters)) || list_empty(list_front(&sema_b->semaphore.waiters)))
-    return false;
-  else
+  ASSERT (!list_empty(list_front(&sema_a->semaphore.waiters)));
+  ASSERT (!list_empty(list_front(&sema_b->semaphore.waiters)));
+
   //Devuelve falso si la prioridad del thread A es menor que la del thread B.
   return (list_entry(list_front(&sema_a->semaphore.waiters),struct thread,elem)->priority) > 
           (list_entry(list_front(&sema_b->semaphore.waiters),struct thread,elem)->priority);
-}
+}*/
 
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
    to become positive and then atomically decrements it.
@@ -143,9 +143,7 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) 
-
-     list_sort (&sema->waiters, &priorityCompareSemaphore, NULL);
-
+     //list_sort (&sema->waiters, &priorityCompareSemaphore, NULL);
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
   sema->value++;
