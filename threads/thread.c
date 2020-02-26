@@ -372,7 +372,28 @@ thread_set_priority (int new_priority)
 {
   enum intr_level old_level;
   old_level = intr_disable();
-  thread_current ()->priority = new_priority;
+  /*
+  Situation 1: Current thread hasn't been donated. So you need to set both old_priority (Add in thread. 
+  It's use to record the original priority) and priority.
+
+  Situation 2: Current thread has been donated. But we need to set priority now. 
+  If the new priority is less than the priority that the thread get by donating. We only need to set old_priority.
+
+  Situation 3: Current thread has been donated. But it will be donated again. We needn't to change old_priority. 
+  */
+  if(list_empty(&thread_current()->donantes)){
+    thread_current ()->priorityInit = new_priority;
+    thread_current ()->priority = new_priority;
+  }
+  //Si es mayor que la nueva prioridad probablemente se tenga una donación
+  else if(thread_current()->priority > new_priority){
+    thread_current ()->priorityInit = new_priority;
+  }
+  else if(thread_current()->priority == thread_current()->priorityInit){
+    thread_current ()->priorityInit = new_priority;
+    thread_current ()->priority = new_priority;
+  }
+  
   checkMaxCurrentT();
   intr_set_level(old_level);
 }
