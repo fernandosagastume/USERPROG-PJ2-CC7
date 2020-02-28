@@ -165,7 +165,7 @@ void list_reverse (struct list *);
 typedef bool list_less_func (const struct list_elem *a,
                              const struct list_elem *b,
                              void *aux);
-/* OUR IMPLEMENTATION*/
+/* ------ OUR IMPLEMENTATION ----------- */
 bool list_less_comp(const struct list_elem* a,
 		    const struct list_elem* b, void* aux);
 

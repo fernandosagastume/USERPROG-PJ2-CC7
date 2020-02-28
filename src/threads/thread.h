@@ -87,15 +87,24 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                       /* Priority. "!es igual que base_priority a menos que tenga una donación!" */
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     
     /*------ Our implementation -------- */    
+    /* For Alarm */    
     int64_t wake_time_alarm;		/* Time when to wake up blocked thread */
     struct list_elem sleeping_elem;	/* List element for threads to unblock */
+    /*------ Priority -------------------*/
+    int priorityInit;                  /* Se añade una prioridad base que es con la que incia el thread*/
+
+    struct list holdingLocks;           /*Una lista de locks que el thread actualmente tiene*/
+    struct list donantes;               /*Una lista de a quienes se les dona prioridad*/
+    struct list_elem donantesElem;      /*Sirve para iterar en la lista de donantes*/
+    struct lock *waitingLock;           /*El lock que esta siendo esperado por el thread para donación*/
+    
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -136,6 +145,15 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+/*------------------------------------------------------------------------*/
+/*Funciones principal para donación de prioridad*/
+void priorityDonation(void); //Implementa donación de priridad
+void checkMaxCurrentT(void); //Función que decide si se hace yield() al CPU
+bool priorityCompareTATB(const struct list_elem *a, const struct list_elem *b,void *aux UNUSED); /*Función utilizada 
+para ordenar listas*/
+
+/*-------------------------------------------------------------------------*/
 
 int thread_get_nice (void);
 void thread_set_nice (int);
