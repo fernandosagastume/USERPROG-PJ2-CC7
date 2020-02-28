@@ -54,6 +54,9 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+/*--- Our Implementation --*/
+
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -171,6 +174,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
+  enum intr_level old_level;
 
   ASSERT (function != NULL);
 
@@ -200,6 +204,18 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+
+  //Se deshabilita interrupcciones
+  old_level = intr_disable();
+
+    //Current running thread
+  struct thread *currentT = thread_current();
+  //Compara las prioridades para saber si ceder el CPU al nuevo thread en creación.
+  if (currentT->priority < t->priority){
+      thread_yield();
+  }
+
+  intr_set_level(old_level);
 
   return tid;
 }
@@ -237,7 +253,11 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  /*list_push_back (&ready_list, &t->elem);*/
+  
+  list_insert_ordered(&ready_list,&t->elem,priorityCompareTATB,NULL);/*Inserta en la lista por
+                                                                           orden de prioridad*/
+
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -296,6 +316,20 @@ thread_exit (void)
   NOT_REACHED ();
 }
 
+/*---------------------------------------------------------------------------------------------------*/
+/*En list.c en la definición de la funcion list_insert_ordered() se pide una función bool que compare
+  dos elementos, en el caso de thread_yield() se debe comparar el thread que se quiere volver a meter a la lista
+  de los thread en estado ready, con todos los demas elementos que están en dicha lista ordenando por orden de
+  prioridad*/
+bool 
+priorityCompareTATB(const struct list_elem *a,const struct list_elem *b,
+                      void *aux UNUSED){
+  //Devuelve falso si la prioridad del thread A es menor que la del thread B.
+  return (list_entry(a,struct thread,elem)->priority) > (list_entry(b,struct thread,elem)->priority);
+}
+/*---------------------------------------------------------------------------------------------------*/
+
+
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void
@@ -308,7 +342,9 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    //list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list,&cur->elem,priorityCompareTATB,NULL);/*Inserta en la lista por
+                                                                           orden de prioridad*/
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -335,7 +371,30 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  enum intr_level old_level;
+  old_level = intr_disable();
+  /*
+  Situation 1: Current thread hasn't been donated. So you need to set both old_priority (Add in thread. 
+  It's use to record the original priority) and priority.
+  Situation 2: Current thread has been donated. But we need to set priority now. 
+  If the new priority is less than the priority that the thread get by donating. We only need to set old_priority.
+  Situation 3: Current thread has been donated. But it will be donated again. We needn't to change old_priority. 
+  */
+  if(list_empty(&thread_current()->donantes)){
+    thread_current ()->priorityInit = new_priority;
+    thread_current ()->priority = new_priority;
+  }
+  //Si es mayor que la nueva prioridad probablemente se tenga una donación
+  else if(thread_current()->priority > new_priority){
+    thread_current ()->priorityInit = new_priority;
+  }
+  else if(thread_current()->priority == thread_current()->priorityInit){
+    thread_current ()->priorityInit = new_priority;
+    thread_current ()->priority = new_priority;
+  }
+  
+  checkMaxCurrentT();
+  intr_set_level(old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -344,6 +403,32 @@ thread_get_priority (void)
 {
   return thread_current ()->priority;
 }
+
+/* --------------------------------------------------------------------------------------------------- */
+/*Función que decide si se hace yield() al CPU basandose en la ready list y current thread*/
+void
+checkMaxCurrentT(void){
+
+  if(!(list_empty(&ready_list))){
+    //Prioridad del primer elemento en la ready list
+    int priori = list_entry(list_front(&ready_list),struct thread,elem)->priority; 
+    //Prioridad del current running thread
+    int curPriori = thread_current()->priority; //
+    /*Se compara la prioridad del current thread con la del primero en la ready list para saber si hacer 
+    yield del CPU o no*/
+    if(priori > curPriori)
+      thread_yield();
+  }
+}
+
+/*Implementa priority scheduling y donación de prioridad*/
+void
+priorityDonation (void) 
+{
+  struct thread *thactual = thread_current();
+  //struct lock *lck = thactual->waitingLock;
+}
+/* --------------------------------------------------------------------------------------------------- */
 
 /* Sets the current thread's nice value to NICE. */
 void
@@ -462,6 +547,15 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+
+  /* Nuevos campos para Priority Donation*/
+  //--------------------------------------
+  t->priorityInit = priority;
+  list_init(&t->holdingLocks);
+  t->waitingLock = NULL;
+  list_init(&t->donantes);
+  //---------------------------------------
+
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
