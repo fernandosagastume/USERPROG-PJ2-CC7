@@ -89,7 +89,6 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. "!es igual que base_priority a menos que tenga una donación!" */
     struct list_elem allelem;           /* List element for all threads list. */
-
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     
@@ -152,6 +151,10 @@ void priorityDonation(void); //Implementa donación de priridad
 void checkMaxCurrentT(void); //Función que decide si se hace yield() al CPU
 bool priorityCompareTATB(const struct list_elem *a, const struct list_elem *b,void *aux UNUSED); /*Función utilizada 
 para ordenar listas*/
+
+/* ------ OUR IMPLEMENTATION ----------- */
+bool list_less_comp(const struct list_elem* a,
+        const struct list_elem* b, void* aux);
 
 /*-------------------------------------------------------------------------*/
 
