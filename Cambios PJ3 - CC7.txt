@@ -1,0 +1,129 @@
+Cambios PJ3 - CC7:
+
+//------------------------------------- Stack Growth y Eviction -----------------------------------------//
+	
+* Se agregó una constante ----> #define USER_VADDR ((void *) 0x08048000), indica el bottom user valid address. Definida en userprog/exception.h
+
+* Se agregó una constante ----> #define LIM_STACK ((void *) 0x40000000), indica el stack limit address. Definida en userprog/exception.h
+
+* Se modificó la función void page_fault() en el archivo userprog/exception.c, se manejaron los casos mencionados en la pintos guide, los cuales son si la fault address es null pointer, una kernel address, y write violation entonces eso provoca que sea una dirección invalida, lo cual debe por consecuencia provocar un syscall_exit(-1). Además se llevan a cabo verificaciones en caso de que sea necesario hacer crecer el stack. Por último se agregó la función install_page().
+
+* Se agregó en threads/init.c, la incialización de la struct list frame_table y otras estructuras definidas en vm/frameTable.h (La funcion es init_frameTable() definida en vm/frameTable.h).
+
+* Se agregaron y definieron las siguientes funciones (en vm/frameTable.h y vm/frameTable.c):
+
+	- void init_frameTable(void); //Se incializan elementos necesarios.
+		
+	- void *get_pageFT(enum palloc_flags); //Se obtiene la pagina y se guarda en la lista frame_table
+	
+	- void free_frameTable(void *); //Remueve los frames de la frame_table.
+
+	- void* evict_page(void);/*Función que se utiliza para abrir espacio para una nueva página
+	  							en caso de que haya que hacer Eviction*/
+	
+	- struct frame_table_entry* select_victim(void); /*Se elige la victima a la cual se le 
+													 hará evict de la memoria cache*/
+	
+	- bool evicted_save(struct frame_table_entry* victima); /*Se guarda el contenido del evicted frame*/
+
+	- void getPTEandUvaddr(void* frame, void* upage, uint32_t* pte); /*Función para guardar la pte y user
+	 																   virtual address mapeado al frame*/
+
+* Se modificó la función pagedir_set_page() en el archivo userprog/pagedir.c. Se agregó en la linea 118 de ese archivo la función getPTEandUvaddr() para ir a traer campos necesarios para la frame table entry de cada frame. Además se sustituyeron ls función palloc_free_page() por la función free_frameTable() en las líneas 46, 47, y 49 del archivo. 
+
+* Se sustituyeron las funciones palloc_free_page() y palloc_get_page() en el archivo userprog/process.c por la funciones free_frameTable() y get_pageFT() en las funciones load_segment, setup_stack de ese archivo. 
+
+* Se agregaron dos nuevos archivos, vm/pageTable.c y vm/pageTable.h en donde se agregaron y se definieron las siguientes funciones:
+
+	/* Supplemental page table element. */
+	- struct sup_page_table_entry; /*Struct donde se guarda información adicional a la page table de cada 									proceso.*/
+
+	 /* Computes and returns the hash value for hash element E, given auxiliary data AUX. */
+	- unsigned SPTE_hash (const struct hash_elem* e, void* aux);
+
+	 /* Compares the value of two hash elements A and B, given auxiliary data AUX.  Returns true if A is 		less than B, or false if A is greater than or equal to B. */
+	- bool SPTE_less (const struct hash_elem* a, const struct hash_elem* b, void* aux);
+
+	 /*Función que busca dada una hash table y un user virtual address
+  	 la SPTE asociada a la misma*/
+	- struct sup_page_table_entry* get_SPTE(void* user_vaddr, struct hash* hash_table);
+
+	 /*Función destructrora cuando se desea destruir un elemento de la hash table dada*/
+	- void destructor_func (struct hash_elem* e, void* aux UNUSED);
+
+	 /*Se destruye la Supplemental Page Table asociada dada*/
+	- void destroy_SPT(struct hash* SPT);
+
+	 /*Función que guarda una supplemental page table creada, en la SPT asociada al thread que de quien esta siendo creada (i.e el thread owner de un frame)*/
+	- bool storeInSPT(struct sup_page_table_entry* SPTE, struct hash* TsupPT);
+
+
+* Se crea un nuevo campo en struct thread en el archivo threads/thread.h, el cual es un campo el cual es usado para asociar una supplemental page table representado como una hash table. Luego el hash table se define en userprog/process.c dentro de la función start_process() y cuando un proceso hace exit por medio de la función process_exit() se destruye la supplemental page table asociada al thread del proceso actual por medio de la función hash_destroy. La función que se encarga de hacer el hash_destroy está ubicada en el archivo "vm/pageTable.c" con el nombre de destroy_SPT().
+
+//------------------------------------- Stack Growth y Eviction -----------------------------------------//
+
+//--------------------------------------------- Reclamation ---------------------------------------------//
+
+* Se agregaron las siguientes definiciones en vm/pageTable.h:
+
+	 /*Las siguientes definiciones son para indicar el estado en el que 
+      se encuentra la página en la SPTE*/
+
+	-> #define IN_SWAP 1 //La página se encuentra en un swap slot
+	-> #define FROM_EXE 2 ////En un ejecutable
+	-> #define IN_MEMORY 4 //Esta activa en memoria
+
+* En vm/pageTable.c y vm/pageTable.h se agregaron y se definieron las siguientes funciones:
+
+//----------------------------------------------------------------------------------------------------------
+	 /*Funcionaes que se usan para cargar datos de una página en 
+	 su SPTE, usado para el proceso de reclamation.*/
+
+	- bool load_from_swap_SPTE(struct sup_page_table_entry* SPTE);
+//----------------------------------------------------------------------------------------------------------
+
+* Se agregaron dos nuevos archivos, vm/swap.c y vm/swap.h en donde se agregaron y se definieron las siguientes funciones, variables y definiciones:
+	
+	//----------------------------------------- Variables -----------------------------------------------//
+	 //Make the swap block global
+	- struct block* global_swap_block;
+
+	 /* Bitmap del swap slot*/
+	- struct bitmap* swap_bitmap;
+
+	 //Sectores necesitados por página
+	- #define SECTORxPAGE (PGSIZE/BLOCK_SECTOR_SIZE)
+	//----------------------------------------- Variables -----------------------------------------------//
+
+	//----------------------------------------- Funciones -----------------------------------------------//
+	 //Get the block device when we initialize our swap code
+	- void swap_init(void);
+
+	 /*Función que saca el frame guardado en el swap y toda su información y la coloca en una página en memoria*/
+	- void read_from_swap(void* frame, size_t index);
+
+	 //Función que guarda un frame y su información en el swap
+	- size_t write_from_swap(void* frame);
+
+	 //Se hace para eliminar un indice del swap bitmap (Leer bitmaps en la guia de pintos para saber más)
+	- void swap_flip(size_t index);
+	//--------------------------------------------- Funciones -------------------------------------------//
+
+* Se agrego la función swap_init() en el archivo "threads/init.c" y locate_block_devices() definida en también definida el init.c, que en el mismo archivo definen esa función como /* Figure out what block devices to cast in the various Pintos roles. */, en el caso del swap ese block device que va a traer es el BLOCK_SWAP.
+
+* Se agregó en el archivo "userprog/exception.c" los casos para reclamation que basicamente es que si una página se detecta que no está cargada, entonces habría que cargarla por medio de la función load_from_swap_SPTE() que va y trae el faul frame en caso de que estuviera albergado en el SWAP.
+
+//--------------------------------------------- Reclamation ---------------------------------------------//
+
+//--------------------------------------------- Lazy Loading --------------------------------------------//
+
+* Se definió la función lazy_loading() en el archivo "userprog/process.c", en donde es una copia de la función load_segment() del mismo archivo, con la ligera diferencia de que en vez de cargar todas las páginas todas a la vez, solamente se guardan en una Supplemental page table con el objetivo de que se carguen una por una dependiendo de cuando se requiera cierta página en run time.
+
+* Se agregó y se definió la función add_EXE_to_SPTE(); en el archivo vm/pageTable.h y vm/pageTable.c, la cual se encarga de guardar los datos de un exe o un archivo en la SPTE y luego guardar esa SPTE en la supplemental page table del proceso asociado. Además se agregaron nuevos campos al struct sup_page_table_entry en vm/pageTable.h, donde se guardan la información del archivo. 
+
+* Ahora como los archivos se cargan uno a uno, todo se maneja con reclamation, ya que cuando se va necesitando un archivo en run time, se hace el proceso de reclamation y se busca el archivo en la Supplemental Page Table y se carga. Todo lo anterior se hace en la función en el archivo "vm/pageTable.c"
+con el nombre de load_from_file_SPTE().
+
+//--------------------------------------------- Lazy Loading --------------------------------------------//
+
+
