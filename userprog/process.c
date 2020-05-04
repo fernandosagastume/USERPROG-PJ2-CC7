@@ -164,8 +164,7 @@ process_exit (void)
   uint32_t *pd;
   /********* Our Implementation *********/
   sema_up(&cur->semaphore_wait);
-  if(cur->exit_value > 0 || cur->exit_value < -1 )
-    cur->exit_value = 0;
+
   //Process termination message
   printf ("%s: exit(%d)\n", cur->name, cur->exit_value);
 

@@ -86,7 +86,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_EXIT:
 		{
 			int* esp = (int *)f->esp;
-			int *ag = ((esp + 1) + 1);
+			int *ag = ((esp) + 1);
 			//Se valida que se este en user space
 			pointers_validation(ag);
 			argSt[0] = *ag;
@@ -99,14 +99,14 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		{
 			int* esp = (int *)f->esp;
 			//Se obtienen los argumentos del stack
-			    int *ag = ((esp + 1) + 1);
+			    int *ag = ((esp) + 1);
 			    //Se valida que se este en user space
 			    pointers_validation(ag);
 			    argSt[0] = *ag;
 
 			void* physPage = pagedir_get_page (curr->pagedir,(const void *)argSt[0]);
 
-			if (physPage)
+			if (!physPage)
 	          	syscall_exit(-1);
 
 	        argSt[0] = (int)physPage;
@@ -117,7 +117,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_WAIT:
 		{
 			int* esp = (int *)f->esp;
-			int *ag = ((esp + 1) + 1);
+			int *ag = ((esp) + 1);
 			//Se valida que se este en user space
 			pointers_validation(ag);
 			argSt[0] = *ag;
@@ -193,7 +193,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 
 			void* physPage = pagedir_get_page (curr->pagedir,(const void *)argSt[0]);
 
-			if (physPage == NULL)
+			if (!physPage == NULL)
 	          	syscall_exit(-1);
 
 	        argSt[0] = (int)physPage;
@@ -204,13 +204,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_REMOVE:
 		{
 			int* esp = (int *)f->esp;
-			int *ag = ((esp + 1) + 1);
+			int *ag = ((esp) + 1);
 			//Se valida que se este en user space
 			pointers_validation(ag);
 			argSt[0] = *ag;
 			void* physPage = pagedir_get_page (curr->pagedir,(const void *)argSt[0]);
 
-			if (physPage)
+			if (!physPage)
 	          	syscall_exit(-1);
 
 	        argSt[0] = (int)physPage;
@@ -221,13 +221,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_OPEN:
 		{
 			int* esp = (int *)f->esp;
-			int *ag = ((esp + 1) + 1);
+			int *ag = ((esp) + 1);
 			//Se valida que se este en user space
 			pointers_validation(ag);
 			argSt[0] = *ag;
 			void* physPage = pagedir_get_page (curr->pagedir,(const void *)argSt[0]);
 
-			if (physPage)
+			if (!physPage)
 	          	syscall_exit(-1);
 
 	        argSt[0] = (int)physPage;
@@ -238,7 +238,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_FILESIZE:
 		{
 			int* esp = (int *)f->esp;
-			int *ag = ((esp + 1) + 1);
+			int *ag = ((esp) + 1);
 			//Se valida que se este en user space
 			pointers_validation(ag);
 			argSt[0] = *ag;
@@ -249,7 +249,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_CLOSE:
 		{
 			int* esp = (int *)f->esp;
-			int *ag = ((esp + 1) + 1);
+			int *ag = ((esp) + 1);
 			//Se valida que se este en user space
 			pointers_validation(ag);
 			argSt[0] = *ag;
@@ -260,7 +260,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_TELL:
 		{	
 			int* esp = (int *)f->esp;
-			int *ag = ((esp + 1) + 1);
+			int *ag = ((esp) + 1);
 			//Se valida que se este en user space
 			pointers_validation(ag);
 			argSt[0] = *ag;
