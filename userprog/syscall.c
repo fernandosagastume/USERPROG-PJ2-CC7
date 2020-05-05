@@ -316,8 +316,10 @@ syscall_exit (int status){
 pid_t syscall_exec(const char *cmd_line)
 {
 
-	if(!cmd_line)
+	if(!cmd_line){
+		//printf("ESTOY AQUI\n");
 		return -1;
+	}
 
 	lock_acquire(&lockFS);
 	pid_t cpid = process_execute(cmd_line);
@@ -328,6 +330,7 @@ pid_t syscall_exec(const char *cmd_line)
 
 int syscall_wait(pid_t pid)
 {
+	//printf("ESTE ES EL PID -> %d\n", pid);
 	return process_wait(pid);
 }
 

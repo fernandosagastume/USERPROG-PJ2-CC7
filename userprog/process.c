@@ -27,6 +27,7 @@
 tid_t stid;
 //Se guarda el thread en caso de que se encuentre en la función search_TID();
 struct thread* matchedT;
+int global_cnt = 0;
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -67,8 +68,9 @@ process_execute (const char *file_name)
   strlcpy (exec_name, file_name, strlen(file_name) + 1);
   exec_name = strtok_r(exec_name, " ", &pointr); //Se separa el nombre del proceso de los argumentos de filename
 
-  if(!exec_name)
+  if(!exec_name){
     return -1;
+  }
 
   /* Create a new thread to execute EXEC_NAME. */
   tid = thread_create (exec_name, PRI_DEFAULT, start_process, fn_copy);
@@ -137,11 +139,14 @@ process_wait (tid_t child_tid)
   int exit_curr = thread_current()->exit_value;
   //printf("Wait : %s %d and exit status: %d\n",thread_current()->name, child_tid, 
     //      exit_curr);
+
+  if(list_empty(&thread_current()->child_list)){
+    //printf("LLEGUE AQUI LIST EMPTY\n");
+    return -1;
+  }
+
   struct list_elem* iter_;
   struct thread* child = NULL;  
-
-  if(list_empty(&thread_current()->child_list))
-    return -1;
   
   /*Se verifica que el child_tid realmente este asociado a uno de los procesos hijos
    en la lista de hijos del proceso.*/
@@ -156,14 +161,19 @@ process_wait (tid_t child_tid)
       }
   }
 
-  if(!child)
+  if(!child){
+    //printf("LLEGUE AQUI CHILD NULL\n");
     return -1;
+  }
   /*Se remueve en caso de una segunda llamada a la función process_wait()*/
   list_remove(&child->child_elem);
   //Se hace down al semaforo para poner a dormir al thread actual
   sema_down(&child->semaphore_wait);
-  if(child->exit_value < -1)
+
+  if(child->exit_value < -1){
+    //printf("LLEGUE AQUI EXIT VALUE\n");
     child->exit_value = exit_curr;
+  }
 
   return child->exit_value;   
 }
