@@ -321,6 +321,7 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
+  sema_up(&thread_current()->semaphore_wait);
 
 #ifdef USERPROG
   process_exit ();
@@ -456,7 +457,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -682,7 +683,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);

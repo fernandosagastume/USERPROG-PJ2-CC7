@@ -67,6 +67,8 @@ process_execute (const char *file_name)
   strlcpy (exec_name, file_name, strlen(file_name) + 1);
   exec_name = strtok_r(exec_name, " ", &pointr); //Se separa el nombre del proceso de los argumentos de filename
 
+  if(!exec_name)
+    return -1;
 
   /* Create a new thread to execute EXEC_NAME. */
   tid = thread_create (exec_name, PRI_DEFAULT, start_process, fn_copy);
@@ -127,33 +129,43 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
   /********** Our Implementation ***********/
-  struct thread* curr = thread_current();
-  ASSERT(!list_empty(&curr->child_list));
+  //struct thread* curr = thread_current();
+  //ASSERT(!list_empty(&curr->child_list));
+  int exit_curr = thread_current()->exit_value;
+  //printf("Wait : %s %d and exit status: %d\n",thread_current()->name, child_tid, 
+    //      exit_curr);
   struct list_elem* iter_;
-  struct thread* child = NULL;
+  struct thread* child = NULL;  
 
+  if(list_empty(&thread_current()->child_list))
+    return -1;
+  int ex_stat;
   /*Se verifica que el child_tid realmente este asociado a uno de los procesos hijos
    en la lista de hijos del proceso.*/
-  for (iter_ = list_front(&curr->child_list); iter_ != NULL; iter_ = iter_->next)
+  for (iter_ = list_front(&thread_current()->child_list); iter_ != NULL; iter_ = iter_->next)
   {
-      struct thread *trd = list_entry (iter_, struct thread, child_elem);
+     struct thread * trd = list_entry (iter_, struct thread, child_elem);
       if (trd->tid == child_tid)
       {
-        //Se enecontró el hijo
+        //Se enecontró el hijo 
         child = trd;
         break;
       }
   }
+
   if(!child)
     return -1;
   /*Se remueve en caso de una segunda llamada a la función process_wait()*/
   list_remove(&child->child_elem);
   //Se hace down al semaforo para poner a dormir al thread actual
   sema_down(&child->semaphore_wait);
-  return child->exit_value;
+  if(child->exit_value < -1)
+    child->exit_value = exit_curr;
+
+  return child->exit_value;   
 }
 
 /* Free the current process's resources. */
@@ -163,7 +175,7 @@ process_exit (void)
   struct thread* cur = thread_current ();
   uint32_t *pd;
   /********* Our Implementation *********/
-  sema_up(&cur->semaphore_wait);
+  //sema_up(&cur->semaphore_wait);
 
   //Process termination message
   printf ("%s: exit(%d)\n", cur->name, cur->exit_value);
