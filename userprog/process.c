@@ -142,7 +142,7 @@ process_wait (tid_t child_tid)
 
   if(list_empty(&thread_current()->child_list))
     return -1;
-  int ex_stat;
+  
   /*Se verifica que el child_tid realmente este asociado a uno de los procesos hijos
    en la lista de hijos del proceso.*/
   for (iter_ = list_front(&thread_current()->child_list); iter_ != NULL; iter_ = iter_->next)
@@ -534,47 +534,61 @@ setup_stack (const char * file_name, void **esp)
         palloc_free_page (kpage);
     }
   
-    char *token; 
-    char* pointr;
-    //Número de argumentos
-    int argc = 0; 
-    //Tamaño máximo considerado de args que puede tener un archivo
-    char* argv[20]; 
-    /*Se obtienen y se guardan los argumentos*/
-    for(token = strtok_r((char *)file_name, " ", &pointr); token != NULL;
-      token = strtok_r(NULL, " ", &pointr))
+  char* token;
+  char* pointr;
+  char * fn_copy = malloc(strlen(file_name)+1);
+
+  strlcpy (fn_copy, file_name, strlen(file_name)+1);
+  int argc = 0;
+
+  for (token = strtok_r (fn_copy, " ", &pointr); token != NULL;
+    token = strtok_r (NULL, " ", &pointr)){
+
+    argc++;
+  }
+
+  //Se abre espacio para guardar las argc referencias
+  int* argReferences = malloc(argc*sizeof(int));
+
+  for (int arg = 0, token = strtok_r (file_name, " ", &pointr); token != NULL;
+    token = strtok_r (NULL, " ", &pointr), arg++)
     {
-      //Se guardan los argumentos
-      argv[argc] = token;
-      argc++;
+      size_t arglen = strlen(token) + 1; //El tamaño del arg mas 1 para el /0
+      *esp = *esp - arglen; //Se abre espacio en el stack para cada arg
+      memcpy(*esp, token, arglen); //Se copia cada arg en el stack
+      argReferences[arg] = *esp; //Guarda la referencia de cada arg
     }
-    uint32_t argReferences[argc];
-    int notLastArg = argc - 1;
-    for(int arg = notLastArg; arg >= 0; arg--)
-        {
-          size_t arglen = strlen(argv[arg]) + 1; //El tamaño del arg mas 1 para el /0
-          *esp = *esp - sizeof(char)*arglen; //Se abre espacio en el stack para cada arg
-          memcpy(*esp, argv[arg], sizeof(char)*arglen); //Se copia cada arg en el stack
-          argReferences[arg] = (uint32_t *)*esp; //Guarda la referencia de cada arg
-        }
-    //Se abre espacio para meter el caracter nulo
+
+  //Se realiza el word align
+  while((int)*esp%4)
+  {
+    *esp = *esp - sizeof(char);
+    char align = 0;
+    memcpy(*esp,&align,sizeof(char));
+  }
+
+  //Se abre espacio para meter el caracter nulo
     *esp = *esp - 4;
     (*(int *)(*esp)) = 0;
 
-    *esp = *esp - 4;
-    //Push de los argumentos en el stack
-    for(int arg = notLastArg; arg >= 0; arg--){
-      (*(uint32_t **)(*esp)) = argReferences[arg];
-      *esp = *esp - 4;
-    }
-    //Se hace push la referencia del primer argumento
-    (*(uintptr_t **)(*esp)) = *esp + 4;
-    //Se hace push al numero de argumentos
-    *esp = *esp - 4;
-    *(int *)(*esp) = argc;
-    //Se hace push al return address
-    *esp = *esp - 4;
-    (*(int *)(*esp)) = 0;
+  //Push de la referencia de los argumentos en el stack
+  for(int arg=argc-1;arg >= 0; arg--)
+  {
+    *esp-=sizeof(int);
+    memcpy(*esp,&argReferences[arg],sizeof(int));
+  }
+
+  //Se hace push la referencia del primer argumento
+  int firstRef = *esp;
+  *esp = *esp - sizeof(int);
+  memcpy(*esp,&firstRef,sizeof(int));
+  //Se hace push al numero de argumentos
+  *esp = *esp - sizeof(int);
+  memcpy(*esp,&argc,sizeof(int));
+  //Se hace push de un return address inventado
+  int fakeReturn = 0;
+  *esp = *esp - sizeof(int);
+  memcpy(*esp,&fakeReturn,sizeof(int));
 
   return success;
 }
