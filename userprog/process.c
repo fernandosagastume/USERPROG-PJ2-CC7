@@ -541,6 +541,7 @@ setup_stack (const char * file_name, void **esp)
   strlcpy (fn_copy, file_name, strlen(file_name)+1);
   int argc = 0;
 
+  //Se obtiene la cantidad de argumentos que viene en el file_name
   for (token = strtok_r (fn_copy, " ", &pointr); token != NULL;
     token = strtok_r (NULL, " ", &pointr)){
 
@@ -559,7 +560,9 @@ setup_stack (const char * file_name, void **esp)
       argReferences[arg] = *esp; //Guarda la referencia de cada arg
     }
 
-  //Se realiza el word align
+  /*Se verifica que el esp sea multiplos de 4,
+   para escribir el número necesario de 0's para
+   hacer word align de 4 bytes*/
   while((int)*esp%4)
   {
     *esp = *esp - sizeof(char);
@@ -572,9 +575,9 @@ setup_stack (const char * file_name, void **esp)
     (*(int *)(*esp)) = 0;
 
   //Push de la referencia de los argumentos en el stack
-  for(int arg=argc-1;arg >= 0; arg--)
+  for(int arg = argc - 1; arg >= 0; arg--)
   {
-    *esp-=sizeof(int);
+    *esp = *esp - sizeof(int);
     memcpy(*esp,&argReferences[arg],sizeof(int));
   }
 
